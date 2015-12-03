@@ -9,6 +9,12 @@
     });
   };
 
+  Array.prototype.include = function(set) {
+    return this.filter(function(e) {
+      return set.indexOf(e) >= 0;
+    });
+  };
+
   DOMNodeCollection.prototype.html = function (string) {
     if (typeof string === "undefined") {
       return this.nodeArray[0].innerHTML;
@@ -50,6 +56,41 @@
       var newClasses = nodeClasses.remove(removeClasses);
       this.nodeArray[j].className = newClasses.join(" ");
     }
+  };
+
+  DOMNodeCollection.prototype.children = function () {
+    var childNodes = [];
+    for (var i = 0; i < this.nodeArray.length; i++) {
+      childNodes.concat(this.nodeArray[i].children);
+    }
+    return new DOMNodeCollection(childNodes);
+  };
+
+  DOMNodeCollection.prototype.parent = function () {
+    var parentNodes = [];
+    for (var i = 0; i < this.nodeArray.length; i++) {
+      if (this.nodeArray[i].parentElement) {
+        parentNodes.concat(this.nodeArray[i].parentElement);
+      }
+    }
+    return new DOMNodeCollection(parentNodes);
+  };
+
+  DOMNodeCollection.prototype.find = function (selector) {
+    var selectedNodes = document.querySelectorAll(selector);
+    var matchedNodes = [];
+    for (var i = 0; i < this.nodeArray.length; i++) {
+      var matchedChildren = this.nodeArray[i].children.include(selectedNodes);
+      matchedNodes.concat(matchedChildren);
+    }
+    return new DOMNodeCollection(matchedNodes);
+  };
+
+  DOMNodeCollection.prototype.remove = function () {
+    for (var i = 0; i < this.nodeArray.length; i++) {
+      this.nodeArray[i].parent.removeChild(this.nodeArray[i]);
+    }
+    this.nodeArray = [];
   };
 
 
