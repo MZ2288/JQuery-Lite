@@ -23,13 +23,18 @@
     for (var i = 0; i < this.nodeArray.length; i++) {
       this.nodeArray[i].innerHTML = string;
     }
+
+    return this;
   };
 
   DOMNodeCollection.prototype.empty = function () {
     for (var i = 0; i < this.nodeArray.length; i++) {
       this.nodeArray[i].innerHTML = "";
     }
+
+    return this;
   };
+
   // htmlString, element, array, jQuery_lite
   DOMNodeCollection.prototype.append = function (content) {
     if (typeof content === "string") {
@@ -44,6 +49,7 @@
         }
       }
     } else if (content.constructor.name === "DOMNodeCollection") {
+      // or 'instanceof DOMNodeCollection'
       for (i = 0; i < this.nodeArray.length; i++) {
         for (j = 0; j < content.nodeArray.length; j++) {
           this.nodeArray[i].appendChild(content.nodeArray[j].cloneNode());
@@ -54,10 +60,17 @@
         this.nodeArray[i].appendChild(content.cloneNode());
       }
     }
+
+    return this;
   };
 
-  DOMNodeCollection.prototype.attr = function (attrName) {
-    return this.nodeArray[0].attributes[attrName].value;
+  DOMNodeCollection.prototype.attr = function (attrName, attrValue) {
+    if (typeof attrValue === "undefined") {
+      return this.nodeArray[0].attributes[attrName].value;
+    }
+
+    this.nodeArray[0].attributes[attrName] = attrValue;
+    return this;
   };
 
   DOMNodeCollection.prototype.addClass = function (className) {
@@ -93,18 +106,20 @@
   DOMNodeCollection.prototype.parent = function () {
     var parentNodes = [];
     for (var i = 0; i < this.nodeArray.length; i++) {
-      if (this.nodeArray[i].parentElement) {
-        parentNodes = parentNodes.concat(this.nodeArray[i].parentElement);
+      var parentElement = this.nodeArray[i].parentElement;
+      if (parentElement) {
+        if (parentNodes.indexOf(parentElement) === -1) {
+          parentNodes = parentNodes.concat(parentElement);
+        }
       }
     }
     return new DOMNodeCollection(parentNodes);
   };
 
   DOMNodeCollection.prototype.find = function (selector) {
-    var selectedNodes = document.querySelectorAll(selector);
     var matchedNodes = [];
     for (var i = 0; i < this.nodeArray.length; i++) {
-      var matchedChildren = this.nodeArray[i].children.include(selectedNodes);
+      var matchedChildren = this.nodeArray[i].querySelectorAll(selector);
       matchedNodes.concat(matchedChildren);
     }
     return new DOMNodeCollection(matchedNodes);
@@ -115,8 +130,43 @@
       this.nodeArray[i].parentNode.removeChild(this.nodeArray[i]);
     }
     this.nodeArray = [];
+    return this;
   };
 
+  DOMNodeCollection.prototype.on = function (events, selector, eventHandler) {
+    eventHandler = arguments[arguments.length - 1];
+
+    // function innerEventHandler (e) { // event delegation
+    //   var selected = [].slice.call(this.querySelectorAll(selector));
+    //   if (selected.indexOf(e.target) > 0) {
+    //     // var newEvent = new Event();
+    //     e.currentTarget = e.target;
+    //     eventHandler(e);
+    //   }
+    // }
+
+    for (var i = 0; i < this.nodeArray.length; i++) {
+      // if (arguments.length === 3) {
+      //   this.nodeArray[i].addEventListener(events, innerEventHandler.bind(this.nodeArray[i]));
+      // } else
+      if (arguments.length === 2) {
+        this.nodeArray[i].addEventListener(events, eventHandler);
+      }
+    }
+    return this;
+  };
+
+  DOMNodeCollection.prototype.off = function (events, selector, eventHandler) {
+    eventHandler = arguments[arguments.length - 1];
+    for (var i = 0; i < this.nodeArray.length; i++) {
+      if (arguments.length === 2) {
+        this.nodeArray[i].removeEventListener(events, eventHandler);
+      }
+    }
+    return this;
+  };
+
+  var queue = [];
 
   window.$l = function (arg) {
     var nodeArray;
@@ -126,7 +176,15 @@
     else if (typeof arg === "string") {
       var nodeList = document.querySelectorAll(arg);
       nodeArray = [].slice.call(nodeList);
+    } else if (typeof arg === "function") {
+      queue.push(arg);
+      if (document.readyState === "complete") {
+        for (var i = 0; i < queue.length; i++) {
+          queue[i]();
+        }
+      }
     }
+
     return new DOMNodeCollection(nodeArray);
   };
 })();
